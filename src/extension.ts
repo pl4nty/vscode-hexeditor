@@ -16,6 +16,7 @@ import { showSelectBetweenOffsets } from "./selectBetweenOffsets";
 import StatusEditMode from "./statusEditMode";
 import StatusFocus from "./statusFocus";
 import StatusHoverAndSelection from "./statusHoverAndSelection";
+import { KaitaiView } from "./kaitaiView";
 
 function readConfigFromPackageJson(extension: vscode.Extension<any>): {
 	extId: string;
@@ -48,11 +49,15 @@ export async function activate(context: vscode.ExtensionContext) {
 	const registry = new HexEditorRegistry(initWorker);
 	// Register the data inspector as a separate view on the side
 	const dataInspectorProvider = new DataInspectorView(context.extensionUri, registry);
+	// Register the Kaitai parser view
+	const kaitaiViewProvider = new KaitaiView(context.extensionUri, registry);
 	const configValues = readConfigFromPackageJson(context.extension);
 	context.subscriptions.push(
 		registry,
 		dataInspectorProvider,
 		vscode.window.registerWebviewViewProvider(DataInspectorView.viewType, dataInspectorProvider),
+		kaitaiViewProvider,
+		vscode.window.registerWebviewViewProvider(KaitaiView.viewType, kaitaiViewProvider),
 	);
 
 	const telemetryReporter = new TelemetryReporter(
@@ -129,6 +134,24 @@ export async function activate(context: vscode.ExtensionContext) {
 		},
 	);
 
+	const loadKaitaiTemplateCommand = vscode.commands.registerCommand(
+		"hexEditor.loadKaitaiTemplate",
+		async () => {
+			const fileUri = await vscode.window.showOpenDialog({
+				canSelectMany: false,
+				openLabel: "Select Kaitai Template",
+				filters: {
+					"Kaitai Struct Templates": ["ksy"],
+					"All Files": ["*"],
+				},
+			});
+
+			if (fileUri && fileUri[0]) {
+				await kaitaiViewProvider.loadKsyFile(fileUri[0].fsPath);
+			}
+		},
+	);
+
 	context.subscriptions.push(new StatusEditMode(registry));
 	context.subscriptions.push(new StatusFocus(registry));
 	context.subscriptions.push(new StatusHoverAndSelection(registry));
@@ -140,6 +163,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(telemetryReporter);
 	context.subscriptions.push(copyOffsetAsDec, copyOffsetAsHex);
 	context.subscriptions.push(compareSelectedCommand);
+	context.subscriptions.push(loadKaitaiTemplateCommand);
 	context.subscriptions.push(
 		vscode.workspace.registerFileSystemProvider("hexdiff", new HexDiffFSProvider(), {
 			isCaseSensitive: typeof process !== 'undefined' && process.platform !== 'win32' && process.platform !== 'darwin',
