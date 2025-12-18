@@ -12,11 +12,11 @@ import { HexDiffFSProvider } from "./hexDiffFS";
 import { HexEditorProvider } from "./hexEditorProvider";
 import { HexEditorRegistry } from "./hexEditorRegistry";
 import { prepareLazyInitDiffWorker } from "./initWorker";
+import { KaitaiView } from "./kaitaiView";
 import { showSelectBetweenOffsets } from "./selectBetweenOffsets";
 import StatusEditMode from "./statusEditMode";
 import StatusFocus from "./statusFocus";
 import StatusHoverAndSelection from "./statusHoverAndSelection";
-import { KaitaiView } from "./kaitaiView";
 
 function readConfigFromPackageJson(extension: vscode.Extension<any>): {
 	extId: string;

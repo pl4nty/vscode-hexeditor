@@ -61,9 +61,21 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 			await this._parser.loadKsyFile(ksyPath);
 			this._currentKsyPath = ksyPath;
 			vscode.window.showInformationMessage(`Kaitai template loaded: ${ksyPath}`);
+			this.show();
 			await this.refreshParsedData();
 		} catch (error) {
 			vscode.window.showErrorMessage(`Failed to load Kaitai template: ${error}`);
+		}
+	}
+
+	/**
+	 * Show the Kaitai view
+	 */
+	public show(): void {
+		if (this._view) {
+			this._view.show();
+		} else {
+			vscode.commands.executeCommand(`${KaitaiView.viewType}.focus`);
 		}
 	}
 
@@ -184,31 +196,31 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
                 function renderField(field) {
                   const item = document.createElement('li');
                   item.className = 'tree-item';
-                  
+
                   const nameSpan = document.createElement('span');
                   nameSpan.className = 'field-name';
                   nameSpan.textContent = field.name;
                   item.appendChild(nameSpan);
-                  
+
                   const valueSpan = document.createElement('span');
                   valueSpan.className = 'field-value';
                   valueSpan.textContent = ': ' + formatValue(field.value);
                   item.appendChild(valueSpan);
-                  
+
                   if (field.type) {
                     const typeSpan = document.createElement('span');
                     typeSpan.className = 'field-type';
                     typeSpan.textContent = '(' + field.type + ')';
                     item.appendChild(typeSpan);
                   }
-                  
+
                   if (field.offset !== undefined) {
                     const offsetSpan = document.createElement('span');
                     offsetSpan.className = 'field-offset';
                     offsetSpan.textContent = '@0x' + field.offset.toString(16).toUpperCase();
                     item.appendChild(offsetSpan);
                   }
-                  
+
                   if (field.children && field.children.length > 0) {
                     const childList = document.createElement('ul');
                     for (const child of field.children) {
@@ -216,10 +228,10 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
                     }
                     item.appendChild(childList);
                   }
-                  
+
                   return item;
                 }
-                
+
                 function formatValue(value) {
                   if (typeof value === 'bigint') {
                     return value.toString();
@@ -232,11 +244,11 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
                   }
                   return String(value);
                 }
-                
+
                 window.addEventListener('message', event => {
                   const message = event.data;
                   const content = document.getElementById('content');
-                  
+
                   switch (message.type) {
                     case 'update':
                       if (message.data && message.data.length > 0) {
@@ -259,7 +271,7 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
                       break;
                   }
                 });
-                
+
                 // Signal ready
                 vscode.postMessage({ type: 'ready' });
               </script>
