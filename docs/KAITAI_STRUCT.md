@@ -66,10 +66,14 @@ The Kaitai parser currently supports:
 
 ## Limitations
 
-- This feature is only available in VS Code Desktop (not in web/browser environments)
-- The parser currently reads only the first 10KB of the file for performance reasons
-- Complex Kaitai features (instances, enums, conditionals) have limited support
-- This is a read-only parser - you cannot edit the binary file through the parsed view
+- **Desktop Only**: This feature is only available in VS Code Desktop (not in web/browser environments) due to Node.js dependencies
+- **Performance Limit**: The parser currently reads only the first 10KB of the file for performance reasons
+- **Implementation Approach**: This is a simplified implementation that manually interprets KSY format rather than using the full Kaitai compiler. This means:
+  - Only basic types are supported (integers, floats, strings)
+  - Advanced features (instances, enums, conditionals, custom types, expressions) are not supported
+  - A full implementation would compile .ksy to JavaScript and dynamically load the parser
+- **Read-Only**: This is a read-only parser - you cannot edit the binary file through the parsed view
+- **String Safety**: Null-terminated strings are limited to 1000 characters for safety
 
 ## Example
 

@@ -6,6 +6,7 @@ A custom editor extension for Visual Studio Code which provides a hex editor for
 - A data inspector for viewing the hex values as various different data types
 - Editing with undo, redo, copy, and paste support
 - Find and replace
+- Binary template parsing with Kaitai Struct (desktop only)
 
 ![User opens a text file named release.txt and switches to the hex editor via command palette. The user then navigates and edits the document](https://raw.githubusercontent.com/microsoft/vscode-hexeditor/main/hex-editor.gif)
 
@@ -31,6 +32,18 @@ The hex editor can be set as the default editor for certain file types by using 
 By default, the data inspector is shown just to the right of the data grid (or decoded text if enabled), but it can be configured (via the `hexeditor.inspectorType` setting) to instead show up while hovering over a data cell.
 
 Another option is to give the data inspector a dedicated activity bar entry on the left (by setting `hexeditor.inspectorType` to `sidebar`) that appears when the hex editor is opened, causing the explorer or whatever sidebar you had opened to be hidden. If preferred, the hex editor view can be dragged into another view by dragging the ⬡ icon onto one of the other views. This can be used in combination with the `hexeditor.dataInspector.autoReveal` setting to avoid revealing the sidebar containing the data inspector altogether.
+
+## Using Kaitai Struct Templates
+
+The hex editor supports parsing binary files using [Kaitai Struct](https://kaitai.io/) templates (.ksy files). This allows you to define the structure of binary files and view them in a parsed format.
+
+To use this feature (desktop only):
+1. Open a binary file in the hex editor
+2. Run the command **"Hex Editor: Load Kaitai Template"**
+3. Select a .ksy template file
+4. View the parsed structure in the Kaitai Struct Parser panel
+
+For more information, see [docs/KAITAI_STRUCT.md](docs/KAITAI_STRUCT.md).
 
 ## Known Issues
 
