@@ -4,7 +4,7 @@
 import * as vscode from "vscode";
 import { Disposable } from "./dispose";
 import { HexEditorRegistry } from "./hexEditorRegistry";
-import { KaitaiParser, KaitaiParsedField } from "./kaitaiParser";
+import { KaitaiParser } from "./kaitaiParser";
 import { randomString } from "./util";
 
 export class KaitaiView extends Disposable implements vscode.WebviewViewProvider {
