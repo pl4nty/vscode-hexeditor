@@ -67,6 +67,9 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 		}
 	}
 
+	// Maximum bytes to parse from a file for Kaitai parsing (10KB for performance)
+	private static readonly KAITAI_PARSE_LIMIT = 10000;
+
 	/**
 	 * Refresh the parsed data display
 	 */
@@ -84,8 +87,8 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 		}
 
 		try {
-			// Get the current document data
-			const data = await doc.readBufferWithEdits(0, 10000); // Limit to first 10KB for performance
+			// Get the current document data (limited for performance)
+			const data = await doc.readBufferWithEdits(0, KaitaiView.KAITAI_PARSE_LIMIT);
 			if (!data) {
 				return;
 			}

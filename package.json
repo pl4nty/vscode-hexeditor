@@ -189,14 +189,7 @@
           "type": "webview",
           "id": "hexEditor.kaitaiView",
           "name": "Kaitai Struct Parser",
-          "when": "hexEditor:showSidebarInspector"
-        }
-      ],
-      "explorer": [
-        {
-          "type": "webview",
-          "id": "hexEditor.kaitaiView",
-          "name": "Kaitai Struct Parser"
+          "when": "hexEditor:showSidebarInspector && !isWeb"
         }
       ]
     },

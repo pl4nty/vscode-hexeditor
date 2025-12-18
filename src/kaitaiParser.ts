@@ -28,13 +28,14 @@ export class KaitaiParser {
 			const ksyContent = fs.readFileSync(ksyPath, "utf8");
 			const ksyData = yaml.load(ksyContent) as any;
 
-			// For now, we'll use the kaitai-struct-compiler to compile
-			// In a real implementation, we'd compile the .ksy file to JavaScript
-			// and load it dynamically
 			const typeName = ksyData.meta?.id || path.basename(ksyPath, ".ksy");
 
-			// This is a placeholder - in reality, we need to compile the .ksy file
-			// to JavaScript and then load the generated class
+			// KNOWN LIMITATION: This implementation manually interprets the KSY format
+			// rather than using the full Kaitai compiler. This means:
+			// - Only basic types are supported (integers, floats, strings)
+			// - Advanced features (instances, enums, conditionals, custom types) are not supported
+			// - A full implementation would compile the .ksy to JavaScript using kaitai-struct-compiler
+			//   and dynamically load the generated parser class
 			this.compiledParsers.set(typeName, {
 				ksyData,
 				typeName,
@@ -172,11 +173,14 @@ export class KaitaiParser {
 						value = new TextDecoder("utf-8").decode(bytes);
 						size = fieldDef.size;
 					} else {
-						// Read until null terminator
+						// Read until null terminator (with safety limit)
 						const startPos = stream.pos;
 						const bytes: number[] = [];
 						let byte;
-						while ((byte = stream.readU1()) !== 0) {
+						const maxStringLength = 1000; // Safety limit
+						while (bytes.length < maxStringLength && !stream.isEof()) {
+							byte = stream.readU1();
+							if (byte === 0) break;
 							bytes.push(byte);
 						}
 						value = new TextDecoder("utf-8").decode(new Uint8Array(bytes));
