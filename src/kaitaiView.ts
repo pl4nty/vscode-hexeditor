@@ -58,9 +58,9 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 	 */
 	public async loadKsyFile(ksyPath: string): Promise<void> {
 		try {
-			await this._parser.loadKsyFile(ksyPath);
-			this._currentKsyPath = ksyPath;
-			vscode.window.showInformationMessage(`Kaitai template loaded: ${ksyPath}`);
+			const typeName = await this._parser.loadKsyFile(ksyPath);
+			this._currentKsyPath = typeName;
+			vscode.window.showInformationMessage(`Kaitai template loaded: ${typeName}`);
 			this.show();
 			await this.refreshParsedData();
 		} catch (error) {
@@ -79,9 +79,6 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 		}
 	}
 
-	// Maximum bytes to parse from a file for Kaitai parsing (10KB for performance)
-	private static readonly KAITAI_PARSE_LIMIT = 10000;
-
 	/**
 	 * Refresh the parsed data display
 	 */
@@ -99,19 +96,20 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 		}
 
 		try {
-			// Get the current document data (limited for performance)
-			const data = await doc.readBufferWithEdits(0, KaitaiView.KAITAI_PARSE_LIMIT);
-			if (!data) {
+			// Read the entire file data with edits
+			// The Kaitai parser handles lazy evaluation, so reading the full file is efficient
+			const fileSize = await doc.size();
+			if (fileSize === undefined) {
+				return;
+			}
+			const data = await doc.readBufferWithEdits(0, fileSize);
+
+			if (!data || data.length === 0) {
 				return;
 			}
 
 			// Parse with the loaded template
-			const parsers = this._parser.getLoadedParsers();
-			if (parsers.length === 0) {
-				return;
-			}
-
-			const parsedData = await this._parser.parseData(data, parsers[0]);
+			const parsedData = await this._parser.parseData(data, this._currentKsyPath);
 
 			// Send parsed data to the webview
 			this._view.webview.postMessage({
@@ -132,57 +130,18 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
             <html lang="en">
             <head>
               <meta charset="UTF-8">
-              <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+              <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <style>
-                body {
-                  padding: 10px;
-                  font-family: var(--vscode-font-family);
-                  font-size: var(--vscode-font-size);
-                  color: var(--vscode-foreground);
-                }
-                .no-template {
-                  color: var(--vscode-descriptionForeground);
-                  font-style: italic;
-                  padding: 20px;
-                  text-align: center;
-                }
-                .tree {
-                  list-style: none;
-                  padding-left: 0;
-                  margin: 0;
-                }
-                .tree ul {
-                  list-style: none;
-                  padding-left: 20px;
-                  margin: 0;
-                }
-                .tree-item {
-                  padding: 4px 0;
-                  cursor: default;
-                }
-                .field-name {
-                  font-weight: bold;
-                  color: var(--vscode-symbolIcon-fieldForeground);
-                }
-                .field-value {
-                  color: var(--vscode-foreground);
-                  margin-left: 8px;
-                }
-                .field-type {
-                  color: var(--vscode-descriptionForeground);
-                  font-size: 0.9em;
-                  margin-left: 8px;
-                }
-                .field-offset {
-                  color: var(--vscode-descriptionForeground);
-                  font-size: 0.85em;
-                  margin-left: 8px;
-                }
-                .error {
-                  color: var(--vscode-errorForeground);
-                  padding: 10px;
-                }
+              <style nonce="${nonce}">
+                body { padding: 10px; font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); }
+                .no-template { color: var(--vscode-descriptionForeground); font-style: italic; padding: 20px; text-align: center; }
+                .tree { list-style: none; padding-left: 0; margin: 0; }
+                .tree ul { list-style: none; padding-left: 20px; margin: 0; }
+                .tree-item { padding: 4px 0; cursor: default; }
+                .field-name { font-weight: bold; color: var(--vscode-symbolIcon-fieldForeground); }
+                .field-value { color: var(--vscode-foreground); margin-left: 8px; }
+                .field-offset { color: var(--vscode-descriptionForeground); font-size: 0.85em; margin-left: 8px; }
+                .error { color: var(--vscode-errorForeground); padding: 10px; }
               </style>
               <title>Kaitai Struct Parser</title>
             </head>
@@ -204,15 +163,8 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
 
                   const valueSpan = document.createElement('span');
                   valueSpan.className = 'field-value';
-                  valueSpan.textContent = ': ' + formatValue(field.value);
+                  valueSpan.textContent = ': ' + field.value;
                   item.appendChild(valueSpan);
-
-                  if (field.type) {
-                    const typeSpan = document.createElement('span');
-                    typeSpan.className = 'field-type';
-                    typeSpan.textContent = '(' + field.type + ')';
-                    item.appendChild(typeSpan);
-                  }
 
                   if (field.offset !== undefined) {
                     const offsetSpan = document.createElement('span');
@@ -230,19 +182,6 @@ export class KaitaiView extends Disposable implements vscode.WebviewViewProvider
                   }
 
                   return item;
-                }
-
-                function formatValue(value) {
-                  if (typeof value === 'bigint') {
-                    return value.toString();
-                  }
-                  if (typeof value === 'number') {
-                    return value.toString();
-                  }
-                  if (typeof value === 'string') {
-                    return JSON.stringify(value);
-                  }
-                  return String(value);
                 }
 
                 window.addEventListener('message', event => {

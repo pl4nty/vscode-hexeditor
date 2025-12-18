@@ -49,24 +49,16 @@ export async function activate(context: vscode.ExtensionContext) {
 	const registry = new HexEditorRegistry(initWorker);
 	// Register the data inspector as a separate view on the side
 	const dataInspectorProvider = new DataInspectorView(context.extensionUri, registry);
+	// Register the Kaitai parser view
+	const kaitaiViewProvider = new KaitaiView(context.extensionUri, registry);
 	const configValues = readConfigFromPackageJson(context.extension);
 	context.subscriptions.push(
 		registry,
 		dataInspectorProvider,
 		vscode.window.registerWebviewViewProvider(DataInspectorView.viewType, dataInspectorProvider),
+		kaitaiViewProvider,
+		vscode.window.registerWebviewViewProvider(KaitaiView.viewType, kaitaiViewProvider),
 	);
-
-	// Register the Kaitai parser view only in desktop environments (not web)
-	// because Kaitai Struct depends on Node.js built-ins
-	const isWeb = typeof process === "undefined";
-	let kaitaiViewProvider: KaitaiView | undefined;
-	if (!isWeb) {
-		kaitaiViewProvider = new KaitaiView(context.extensionUri, registry);
-		context.subscriptions.push(
-			kaitaiViewProvider,
-			vscode.window.registerWebviewViewProvider(KaitaiView.viewType, kaitaiViewProvider),
-		);
-	}
 
 	const telemetryReporter = new TelemetryReporter(
 		configValues.extId,
@@ -145,19 +137,11 @@ export async function activate(context: vscode.ExtensionContext) {
 	const loadKaitaiTemplateCommand = vscode.commands.registerCommand(
 		"hexEditor.loadKaitaiTemplate",
 		async () => {
-			if (!kaitaiViewProvider) {
-				vscode.window.showErrorMessage(
-					"Kaitai Struct parsing is not available in this environment. Please use VS Code Desktop.",
-				);
-				return;
-			}
-
 			const fileUri = await vscode.window.showOpenDialog({
 				canSelectMany: false,
 				openLabel: "Select Kaitai Template",
 				filters: {
 					"Kaitai Struct Templates": ["ksy"],
-					"All Files": ["*"],
 				},
 			});
 

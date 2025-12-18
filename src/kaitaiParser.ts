@@ -4,9 +4,11 @@
 import * as yaml from "js-yaml";
 import * as path from "path";
 import * as fs from "fs";
-
-// Kaitai Struct runtime
 import KaitaiStream from "kaitai-struct/KaitaiStream";
+
+// Import the compiler
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const KaitaiStructCompiler = require("kaitai-struct-compiler");
 
 export interface KaitaiParsedField {
 	name: string;
@@ -19,210 +21,179 @@ export interface KaitaiParsedField {
 
 export class KaitaiParser {
 	private compiledParsers: Map<string, any> = new Map();
+	private parserClasses: Map<string, any> = new Map();
 
 	/**
-	 * Load and compile a .ksy file
+	 * Load and compile a .ksy file to JavaScript
 	 */
-	async loadKsyFile(ksyPath: string): Promise<void> {
+	async loadKsyFile(ksyPath: string): Promise<string> {
 		try {
 			const ksyContent = fs.readFileSync(ksyPath, "utf8");
 			const ksyData = yaml.load(ksyContent) as any;
-
 			const typeName = ksyData.meta?.id || path.basename(ksyPath, ".ksy");
 
-			// KNOWN LIMITATION: This implementation manually interprets the KSY format
-			// rather than using the full Kaitai compiler. This means:
-			// - Only basic types are supported (integers, floats, strings)
-			// - Advanced features (instances, enums, conditionals, custom types) are not supported
-			// - A full implementation would compile the .ksy to JavaScript using kaitai-struct-compiler
-			//   and dynamically load the generated parser class
-			this.compiledParsers.set(typeName, {
-				ksyData,
-				typeName,
-			});
+			// Compile the KSY file to JavaScript using the kaitai-struct-compiler
+			const compiledFiles = await KaitaiStructCompiler.compile("javascript", ksyData, null, false);
+
+			// The result is an object with filenames as keys and JS code as values
+			const jsCode = Object.values(compiledFiles)[0] as string;
+
+			// Dynamically evaluate the generated JavaScript to create the parser class
+			// eslint-disable-next-line no-new-func
+			const evalFunc = new Function("KaitaiStream", jsCode + "; return " + this.getClassName(typeName) + ";");
+			const ParserClass = evalFunc(KaitaiStream);
+
+			this.parserClasses.set(typeName, ParserClass);
+
+			return typeName;
 		} catch (error) {
 			throw new Error(`Failed to load KSY file: ${error}`);
 		}
 	}
 
 	/**
+	 * Convert a type name to the expected class name (e.g., "my_format" -> "MyFormat")
+	 */
+	private getClassName(typeName: string): string {
+		return typeName
+			.split("_")
+			.map(part => part.charAt(0).toUpperCase() + part.slice(1))
+			.join("");
+	}
+
+	/**
 	 * Parse binary data using a loaded template
 	 */
-	async parseData(
-		data: Uint8Array,
-		typeName: string,
-	): Promise<KaitaiParsedField[] | undefined> {
-		const parser = this.compiledParsers.get(typeName);
-		if (!parser) {
+	async parseData(data: Uint8Array, typeName: string): Promise<any> {
+		const ParserClass = this.parserClasses.get(typeName);
+		if (!ParserClass) {
 			throw new Error(`Parser for type "${typeName}" not loaded`);
 		}
 
 		try {
-			// Create a Kaitai stream from the data
-			const stream = new KaitaiStream(data);
+			// Create a Kaitai stream from the data buffer
+			const stream = new KaitaiStream(data.buffer);
 
-			// Parse the structure based on the KSY definition
-			// This is a simplified version - real implementation would use
-			// the compiled JavaScript parser
-			const fields = this.parseFields(parser.ksyData.seq || [], stream);
+			// Instantiate the parser with the stream
+			const parsed = new ParserClass(stream);
 
-			return fields;
+			// The parsed object contains all the fields defined in the .ksy file
+			return this.extractFields(parsed);
 		} catch (error) {
 			throw new Error(`Failed to parse data: ${error}`);
 		}
 	}
 
 	/**
-	 * Parse fields from the KSY definition
+	 * Extract fields recursively from a parsed Kaitai object
 	 */
-	private parseFields(seqDefinition: any[], stream: KaitaiStream): KaitaiParsedField[] {
+	private extractFields(obj: any, parentPath = ""): KaitaiParsedField[] {
 		const fields: KaitaiParsedField[] = [];
 
-		for (const fieldDef of seqDefinition) {
-			const offset = stream.pos;
-			let value: any;
-			let size = 0;
+		// Skip internal Kaitai fields
+		const skipFields = ["_io", "_parent", "_root", "_read"];
 
-			// Parse based on field type
-			switch (fieldDef.type) {
-				case "u1":
-					value = stream.readU1();
-					size = 1;
-					break;
-				case "u2":
-				case "u2le":
-					value = stream.readU2le();
-					size = 2;
-					break;
-				case "u2be":
-					value = stream.readU2be();
-					size = 2;
-					break;
-				case "u4":
-				case "u4le":
-					value = stream.readU4le();
-					size = 4;
-					break;
-				case "u4be":
-					value = stream.readU4be();
-					size = 4;
-					break;
-				case "u8":
-				case "u8le":
-					value = stream.readU8le();
-					size = 8;
-					break;
-				case "u8be":
-					value = stream.readU8be();
-					size = 8;
-					break;
-				case "s1":
-					value = stream.readS1();
-					size = 1;
-					break;
-				case "s2":
-				case "s2le":
-					value = stream.readS2le();
-					size = 2;
-					break;
-				case "s2be":
-					value = stream.readS2be();
-					size = 2;
-					break;
-				case "s4":
-				case "s4le":
-					value = stream.readS4le();
-					size = 4;
-					break;
-				case "s4be":
-					value = stream.readS4be();
-					size = 4;
-					break;
-				case "s8":
-				case "s8le":
-					value = stream.readS8le();
-					size = 8;
-					break;
-				case "s8be":
-					value = stream.readS8be();
-					size = 8;
-					break;
-				case "f4":
-				case "f4le":
-					value = stream.readF4le();
-					size = 4;
-					break;
-				case "f4be":
-					value = stream.readF4be();
-					size = 4;
-					break;
-				case "f8":
-				case "f8le":
-					value = stream.readF8le();
-					size = 8;
-					break;
-				case "f8be":
-					value = stream.readF8be();
-					size = 8;
-					break;
-				case "str":
-				case "strz":
-					// For strings, we need to know the size
-					if (fieldDef.size) {
-						const bytes = stream.readBytes(fieldDef.size);
-						value = new TextDecoder("utf-8").decode(bytes);
-						size = fieldDef.size;
-					} else {
-						// Read until null terminator (with safety limit)
-						const startPos = stream.pos;
-						const bytes: number[] = [];
-						let byte;
-						const maxStringLength = 1000; // Safety limit
-						while (bytes.length < maxStringLength && !stream.isEof()) {
-							byte = stream.readU1();
-							if (byte === 0) break;
-							bytes.push(byte);
-						}
-						value = new TextDecoder("utf-8").decode(new Uint8Array(bytes));
-						size = stream.pos - startPos;
-					}
-					break;
-				default:
-					// Unknown type or custom type reference
-					if (fieldDef.size) {
-						stream.readBytes(fieldDef.size);
-						value = `<${fieldDef.type}>`;
-						size = fieldDef.size;
-					} else {
-						value = `<${fieldDef.type || "unknown"}>`;
-						size = 0;
-					}
-					break;
+		for (const key in obj) {
+			if (skipFields.includes(key) || key.startsWith("_")) {
+				continue;
 			}
 
-			fields.push({
-				name: fieldDef.id || "unknown",
-				value,
-				offset,
-				size,
-				type: fieldDef.type,
-			});
+			const value = obj[key];
+			const field: KaitaiParsedField = {
+				name: key,
+				value: this.formatValue(value),
+			};
+
+			// Try to get offset information if available
+			if (obj._io && typeof obj._io.pos === "number") {
+				field.offset = obj._io.pos;
+			}
+
+			// Handle nested objects
+			if (value && typeof value === "object" && !Array.isArray(value)) {
+				if (value._io) {
+					// This is a nested Kaitai structure
+					field.children = this.extractFields(value, `${parentPath}${key}.`);
+				} else {
+					// Try to extract fields from plain objects
+					const nestedFields = this.extractFields(value, `${parentPath}${key}.`);
+					if (nestedFields.length > 0) {
+						field.children = nestedFields;
+					}
+				}
+			} else if (Array.isArray(value)) {
+				// Handle arrays
+				const arrayFields: KaitaiParsedField[] = [];
+				value.forEach((item, index) => {
+					if (item && typeof item === "object") {
+						const itemFields = this.extractFields(item, `${parentPath}${key}[${index}].`);
+						if (itemFields.length > 0) {
+							arrayFields.push({
+								name: `[${index}]`,
+								value: this.formatValue(item),
+								children: itemFields,
+							});
+						}
+					} else {
+						arrayFields.push({
+							name: `[${index}]`,
+							value: this.formatValue(item),
+						});
+					}
+				});
+				if (arrayFields.length > 0) {
+					field.children = arrayFields;
+				}
+			}
+
+			fields.push(field);
 		}
 
 		return fields;
 	}
 
 	/**
+	 * Format a value for display
+	 */
+	private formatValue(value: any): string {
+		if (value === null || value === undefined) {
+			return "null";
+		}
+		if (typeof value === "bigint") {
+			return value.toString();
+		}
+		if (typeof value === "number") {
+			return value.toString();
+		}
+		if (typeof value === "string") {
+			return value;
+		}
+		if (typeof value === "boolean") {
+			return value.toString();
+		}
+		if (value instanceof Uint8Array || value instanceof Array) {
+			if (value.length > 20) {
+				return `[${value.length} bytes]`;
+			}
+			return `[${Array.from(value).map(b => b.toString(16).padStart(2, "0")).join(" ")}]`;
+		}
+		if (typeof value === "object") {
+			return "{...}";
+		}
+		return String(value);
+	}
+
+	/**
 	 * Get list of loaded parsers
 	 */
 	getLoadedParsers(): string[] {
-		return Array.from(this.compiledParsers.keys());
+		return Array.from(this.parserClasses.keys());
 	}
 
 	/**
 	 * Clear all loaded parsers
 	 */
 	clear(): void {
-		this.compiledParsers.clear();
+		this.parserClasses.clear();
 	}
 }
