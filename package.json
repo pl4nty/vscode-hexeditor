@@ -213,6 +213,10 @@
         {
           "command": "hexEditor.compareSelected",
           "when": "false"
+        },
+        {
+          "command": "hexEditor.loadKaitaiTemplate",
+          "when": "!isWeb"
         }
       ],
       "editor/title": [
