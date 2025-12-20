@@ -173,7 +173,7 @@
           "id": "hexExplorer",
           "title": "%name%",
           "icon": "panel-icon.svg",
-          "when": "hexEditor:showSidebarInspector"
+          "when": "true"
         }
       ]
     },
@@ -183,13 +183,13 @@
           "type": "webview",
           "id": "hexEditor.dataInspectorView",
           "name": "%dataInspectorView%",
-          "when": "hexEditor:showSidebarInspector"
+          "when": "true"
         },
         {
-          "type": "webview",
-          "id": "hexEditor.kaitaiView",
+          "type": "tree",
+          "id": "hexEditor.kaitaiTree",
           "name": "Kaitai Struct Parser",
-          "when": "hexEditor:showSidebarInspector"
+          "when": "true"
         }
       ]
     },
