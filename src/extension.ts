@@ -4,6 +4,7 @@
 import TelemetryReporter from "@vscode/extension-telemetry";
 import * as vscode from "vscode";
 import { HexDocumentEditOp } from "../shared/hexDocumentModel";
+import { MessageType } from "../shared/protocol";
 import { openCompareSelected } from "./compareSelected";
 import { copyAs } from "./copyAs";
 import { DataInspectorView } from "./dataInspectorView";
@@ -12,6 +13,8 @@ import { HexDiffFSProvider } from "./hexDiffFS";
 import { HexEditorProvider } from "./hexEditorProvider";
 import { HexEditorRegistry } from "./hexEditorRegistry";
 import { prepareLazyInitDiffWorker } from "./initWorker";
+import { KaitaiParser } from "./kaitaiParser";
+import { KaitaiTreeProvider } from "./kaitaiTreeView";
 import { showSelectBetweenOffsets } from "./selectBetweenOffsets";
 import StatusEditMode from "./statusEditMode";
 import StatusFocus from "./statusFocus";
@@ -48,11 +51,19 @@ export async function activate(context: vscode.ExtensionContext) {
 	const registry = new HexEditorRegistry(initWorker);
 	// Register the data inspector as a separate view on the side
 	const dataInspectorProvider = new DataInspectorView(context.extensionUri, registry);
+	// Register the Kaitai tree view
+	const kaitaiTreeProvider = new KaitaiTreeProvider();
+	const kaitaiParser = new KaitaiParser();
+	let currentKsyPath: string | undefined;
+	let currentTypeName: string | undefined;
+	let ksyWatcher: vscode.FileSystemWatcher | undefined;
 	const configValues = readConfigFromPackageJson(context.extension);
 	context.subscriptions.push(
 		registry,
 		dataInspectorProvider,
 		vscode.window.registerWebviewViewProvider(DataInspectorView.viewType, dataInspectorProvider),
+		kaitaiTreeProvider,
+		vscode.window.registerTreeDataProvider(KaitaiTreeProvider.viewId, kaitaiTreeProvider),
 	);
 
 	const telemetryReporter = new TelemetryReporter(
@@ -129,6 +140,100 @@ export async function activate(context: vscode.ExtensionContext) {
 		},
 	);
 
+	const loadKaitaiTemplateCommand = vscode.commands.registerCommand(
+		"hexEditor.loadKaitaiTemplate",
+		async () => {
+			// Ensure the sidebar container is visible so the view can appear
+			await vscode.commands.executeCommand("setContext", "hexEditor:showSidebarInspector", true);
+
+			const fileUri = await vscode.window.showOpenDialog({
+				canSelectMany: false,
+				openLabel: "Select Kaitai Template",
+				filters: {
+					"Kaitai Struct Templates": ["ksy"],
+				},
+			});
+
+			if (fileUri && fileUri[0]) {
+				// Focus the Kaitai tree view so it becomes visible
+				await vscode.commands.executeCommand(`${KaitaiTreeProvider.viewId}.focus`);
+				const typeName = await kaitaiParser.loadKsyFile(fileUri[0].fsPath);
+				currentKsyPath = fileUri[0].fsPath;
+				currentTypeName = typeName;
+				// Setup live reload watcher for the selected .ksy
+				ksyWatcher?.dispose();
+				try {
+					ksyWatcher = vscode.workspace.createFileSystemWatcher(currentKsyPath);
+					context.subscriptions.push(ksyWatcher);
+					const recompile = async () => {
+						if (!currentKsyPath) { return; }
+						try {
+							await kaitaiParser.loadKsyFile(currentKsyPath);
+							await refreshKaitaiTree(currentTypeName);
+						} catch (e) {
+							vscode.window.showErrorMessage(`Kaitai recompile failed: ${e}`);
+						}
+					};
+					ksyWatcher.onDidChange(recompile, undefined, context.subscriptions);
+					ksyWatcher.onDidCreate(recompile, undefined, context.subscriptions);
+				} catch {
+					// ignore watcher creation errors
+				}
+				await refreshKaitaiTree(typeName);
+			}
+		},
+	);
+
+	const kaitaiSelectRangeCommand = vscode.commands.registerCommand(
+		"hexEditor.kaitaiSelectRange",
+		(offset: number, size: number) => {
+			const first = registry.activeMessaging[Symbol.iterator]().next();
+			if (first.value && offset !== undefined && size !== undefined) {
+				first.value.sendEvent({
+					type: MessageType.SetFocusedByteRange,
+					startingOffset: offset,
+					endingOffset: offset + size - 1,
+				});
+			}
+		},
+	);
+
+	// Refresh the Kaitai tree based on the active document and loaded template
+	async function refreshKaitaiTree(typeName?: string) {
+		const doc = registry.activeDocument;
+		if (!doc) {
+			kaitaiTreeProvider.setData([]);
+			return;
+		}
+		// Read the entire file for parsing - lazy parsing handles exploring large structures
+		// without needing to parse everything upfront
+		const fileSize = await doc.size();
+		if (!fileSize) {
+			return;
+		}
+		const data = await doc.readBufferWithEdits(0, fileSize);
+		if (!data) {
+			return;
+		}
+		const parsers = kaitaiParser.getLoadedParsers();
+		const useType = typeName || currentTypeName || parsers[0];
+		if (!useType) {
+			return;
+		}
+		const fields = await kaitaiParser.parseData(data, useType);
+		kaitaiTreeProvider.setData(fields, kaitaiParser, useType);
+	}
+
+	// Update tree when active document changes
+	context.subscriptions.push(
+		registry.onDidChangeActiveDocument(() => {
+			// Only refresh if we have a template loaded
+			if (currentTypeName || kaitaiParser.getLoadedParsers().length > 0) {
+				refreshKaitaiTree().catch(() => undefined);
+			}
+		}),
+	);
+
 	context.subscriptions.push(new StatusEditMode(registry));
 	context.subscriptions.push(new StatusFocus(registry));
 	context.subscriptions.push(new StatusHoverAndSelection(registry));
@@ -140,6 +245,8 @@ export async function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(telemetryReporter);
 	context.subscriptions.push(copyOffsetAsDec, copyOffsetAsHex);
 	context.subscriptions.push(compareSelectedCommand);
+	context.subscriptions.push(loadKaitaiTemplateCommand);
+	context.subscriptions.push(kaitaiSelectRangeCommand);
 	context.subscriptions.push(
 		vscode.workspace.registerFileSystemProvider("hexdiff", new HexDiffFSProvider(), {
 			isCaseSensitive: typeof process !== 'undefined' && process.platform !== 'win32' && process.platform !== 'darwin',
