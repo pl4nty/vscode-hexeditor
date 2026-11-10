@@ -5,6 +5,7 @@ const fileImports = [
 	() => import("./hexDocumentModel.test"),
 	() => import("./searchRequest.test"),
 	() => import("./range.test"),
+	() => import("./kaitai.test"),
 ];
 
 export async function run(): Promise<void> {

@@ -20,7 +20,7 @@
     "Other"
   ],
   "icon": "icon.png",
-  "activationEvents": [],
+	"activationEvents": [],
   "main": "./dist/extension.js",
   "browser": "./dist/web/extension.js",
   "l10n": "./l10n",
@@ -161,10 +161,20 @@
         "title": "%hexEditor.compareSelected%"
       },
       {
-        "command": "hexEditor.loadKaitaiTemplate",
+        "command": "hexEditor.structure.loadTemplate",
         "category": "%name%",
-        "title": "Load Kaitai Template",
-        "icon": "$(file-code)"
+        "title": "%hexEditor.structure.loadTemplate%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "hexEditor.structure.clearTemplate",
+        "category": "%name%",
+        "title": "%hexEditor.structure.clearTemplate%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "hexEditor.structure.selectNode",
+        "title": "%hexEditor.structure.selectNode%"
       }
     ],
     "viewsContainers": {
@@ -173,7 +183,7 @@
           "id": "hexExplorer",
           "title": "%name%",
           "icon": "panel-icon.svg",
-          "when": "true"
+          "when": "hexEditor:showSidebarInspector"
         }
       ]
     },
@@ -183,16 +193,23 @@
           "type": "webview",
           "id": "hexEditor.dataInspectorView",
           "name": "%dataInspectorView%",
-          "when": "true"
-        },
+          "when": "hexEditor:showSidebarInspector"
+        }
+      ],
+      "explorer": [
         {
-          "type": "tree",
-          "id": "hexEditor.kaitaiTree",
-          "name": "Kaitai Struct Parser",
-          "when": "true"
+          "id": "hexEditor.structure",
+          "name": "%structureView%",
+          "when": "hexEditor:isActive"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "hexEditor.structure",
+        "contents": "%structureView.welcome%"
+      }
+    ],
     "menus": {
       "commandPalette": [
         {
@@ -208,7 +225,24 @@
           "when": "false"
         },
         {
-          "command": "hexEditor.loadKaitaiTemplate"
+          "command": "hexEditor.structure.clearTemplate",
+          "when": "hexEditor:hasStructureTemplate"
+        },
+        {
+          "command": "hexEditor.structure.selectNode",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "hexEditor.structure.loadTemplate",
+          "when": "view == hexEditor.structure",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hexEditor.structure.clearTemplate",
+          "when": "view == hexEditor.structure && hexEditor:hasStructureTemplate",
+          "group": "navigation@2"
         }
       ],
       "editor/title": [
@@ -236,6 +270,11 @@
         }
       ],
       "explorer/context": [
+        {
+          "command": "hexEditor.structure.loadTemplate",
+          "group": "3_compare@40",
+          "when": "resourceExtname == .ksy"
+        },
         {
           "command": "hexEditor.compareSelected",
           "group": "3_compare@30",
