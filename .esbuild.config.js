@@ -22,11 +22,24 @@ build({
 	entryPoints: ["src/extension.ts"],
 	tsconfig: "./tsconfig.json",
 	bundle: true,
-	external: ["vscode"],
+	// Kaitai support is several MB, so it's a separate file loaded on first use
+	external: ["vscode", "./kaitai"],
 	sourcemap: watch,
 	minify,
 	platform: "node",
 	outfile: "dist/extension.js",
+});
+
+build({
+	entryPoints: ["src/kaitai.ts"],
+	tsconfig: "./tsconfig.json",
+	bundle: true,
+	// iconv-lite is an optional dependency of the Kaitai runtime, for uncommon string encodings
+	external: ["iconv-lite"],
+	sourcemap: watch,
+	minify,
+	platform: "node",
+	outfile: "dist/kaitai.js",
 });
 
 // Build the test cases
@@ -34,7 +47,7 @@ build({
 	entryPoints: ["src/test/index.ts"],
 	tsconfig: "./tsconfig.json",
 	bundle: true,
-	external: ["vscode", "mocha", "chai"],
+	external: ["vscode", "mocha", "chai", "iconv-lite"],
 	sourcemap: watch,
 	minify,
 	platform: "node",
@@ -46,7 +59,7 @@ build({
 	tsconfig: "./tsconfig.json",
 	bundle: true,
 	format: "cjs",
-	external: ["vscode", "fs", "worker_threads"],
+	external: ["vscode", "fs", "worker_threads", "iconv-lite", "zlib"],
 	minify,
 	platform: "browser",
 	outfile: "dist/web/extension.js",

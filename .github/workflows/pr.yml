@@ -23,3 +23,8 @@ jobs:
       - run: npm run compile --if-present
       - run: npm run lint
       - run: xvfb-run -a npm run test
+      - run: npx --yes @vscode/vsce@3 package -o hexeditor.vsix
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hexeditor-vsix
+          path: hexeditor.vsix

@@ -225,6 +225,13 @@ export class HexDocument extends Disposable implements vscode.CustomDocument {
 		this._onDidChangeHoverState.fire(byte);
 	}
 
+	private readonly _onDidChangeContent = this._register(new vscode.EventEmitter<void>());
+
+	/**
+	 * Fired when the document contents change from an edit, undo, redo, or revert.
+	 */
+	public readonly onDidChangeContent = this._onDidChangeContent.event;
+
 	private readonly _onDidRevert = this._register(new vscode.EventEmitter<void>());
 
 	/**
@@ -257,14 +264,27 @@ export class HexDocument extends Disposable implements vscode.CustomDocument {
 	 * @see HexDocumentModel.makeEdits
 	 */
 	public makeEdits(edits: readonly HexDocumentEdit[]): HexDocumentEditReference {
-		return this.model.makeEdits(edits);
+		const ref = this.model.makeEdits(edits);
+		this._onDidChangeContent.fire();
+		return {
+			undo: () => {
+				const r = ref.undo();
+				this._onDidChangeContent.fire();
+				return r;
+			},
+			redo: () => {
+				const r = ref.redo();
+				this._onDidChangeContent.fire();
+				return r;
+			},
+		};
 	}
 
 	/**
 	 * Inserts data into the document.
 	 */
 	public insert(offset: number, data: Uint8Array): HexDocumentEditReference {
-		return this.model.makeEdits([{ op: HexDocumentEditOp.Insert, offset, value: data }]);
+		return this.makeEdits([{ op: HexDocumentEditOp.Insert, offset, value: data }]);
 	}
 
 	/**
@@ -341,6 +361,7 @@ export class HexDocument extends Disposable implements vscode.CustomDocument {
 	async revert(_token?: vscode.CancellationToken): Promise<void> {
 		this.model.revert();
 		this._onDidRevert.fire();
+		this._onDidChangeContent.fire();
 	}
 
 	/**

@@ -159,6 +159,22 @@
         "command": "hexEditor.compareSelected",
         "category": "%name%",
         "title": "%hexEditor.compareSelected%"
+      },
+      {
+        "command": "hexEditor.structure.loadTemplate",
+        "category": "%name%",
+        "title": "%hexEditor.structure.loadTemplate%",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "hexEditor.structure.clearTemplate",
+        "category": "%name%",
+        "title": "%hexEditor.structure.clearTemplate%",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "hexEditor.structure.selectNode",
+        "title": "%hexEditor.structure.selectNode%"
       }
     ],
     "viewsContainers": {
@@ -179,8 +195,21 @@
           "name": "%dataInspectorView%",
           "when": "hexEditor:showSidebarInspector"
         }
+      ],
+      "explorer": [
+        {
+          "id": "hexEditor.structure",
+          "name": "%structureView%",
+          "when": "hexEditor:isActive"
+        }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "hexEditor.structure",
+        "contents": "%structureView.welcome%"
+      }
+    ],
     "menus": {
       "commandPalette": [
         {
@@ -194,6 +223,26 @@
         {
           "command": "hexEditor.compareSelected",
           "when": "false"
+        },
+        {
+          "command": "hexEditor.structure.clearTemplate",
+          "when": "hexEditor:hasStructureTemplate"
+        },
+        {
+          "command": "hexEditor.structure.selectNode",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "hexEditor.structure.loadTemplate",
+          "when": "view == hexEditor.structure",
+          "group": "navigation@1"
+        },
+        {
+          "command": "hexEditor.structure.clearTemplate",
+          "when": "view == hexEditor.structure && hexEditor:hasStructureTemplate",
+          "group": "navigation@2"
         }
       ],
       "editor/title": [
@@ -221,6 +270,11 @@
         }
       ],
       "explorer/context": [
+        {
+          "command": "hexEditor.structure.loadTemplate",
+          "group": "3_compare@40",
+          "when": "resourceExtname == .ksy"
+        },
         {
           "command": "hexEditor.compareSelected",
           "group": "3_compare@30",
@@ -256,6 +310,7 @@
   "devDependencies": {
     "@types/chai": "^4.3.0",
     "@types/diff": "^5.2.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^9.0.0",
     "@types/node": "^18.11.9",
     "@types/react": "^17.0.38",
@@ -280,6 +335,9 @@
     "cockatiel": "^3.1.2",
     "diff": "^5.2.0",
     "js-base64": "^3.7.2",
+    "js-yaml": "^4.1.1",
+    "kaitai-struct": "^0.11.0",
+    "kaitai-struct-compiler": "^0.11.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-popper": "^2.3.0",

@@ -16,6 +16,7 @@ import { showSelectBetweenOffsets } from "./selectBetweenOffsets";
 import StatusEditMode from "./statusEditMode";
 import StatusFocus from "./statusFocus";
 import StatusHoverAndSelection from "./statusHoverAndSelection";
+import { StructureView } from "./structureView";
 
 function readConfigFromPackageJson(extension: vscode.Extension<any>): {
 	extId: string;
@@ -53,6 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		registry,
 		dataInspectorProvider,
 		vscode.window.registerWebviewViewProvider(DataInspectorView.viewType, dataInspectorProvider),
+		new StructureView(registry),
 	);
 
 	const telemetryReporter = new TelemetryReporter(

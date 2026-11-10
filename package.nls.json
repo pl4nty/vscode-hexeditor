@@ -18,5 +18,10 @@
 	"hexEditor.copyOffsetAsDec": "Copy Offset as Decimal",
 	"hexEditor.copyOffsetAsHex": "Copy Offset as Hex",
 	"hexEditor.compareSelected": "Compare Selected in HexEditor (Experimental)",
-	"dataInspectorView": "Data Inspector"
+	"dataInspectorView": "Data Inspector",
+	"structureView": "Hex Structure",
+	"structureView.welcome": "Browse this file's fields by parsing it with a [Kaitai Struct](https://kaitai.io) template (.ksy). Templates for many formats are in the [format gallery](https://formats.kaitai.io).\n[Load Template](command:hexEditor.structure.loadTemplate)",
+	"hexEditor.structure.loadTemplate": "Load Kaitai Struct Template...",
+	"hexEditor.structure.clearTemplate": "Clear Structure Template",
+	"hexEditor.structure.selectNode": "Select Structure Field in Editor"
 }
