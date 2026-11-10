@@ -8,8 +8,6 @@ import { HexDocument, ISelectionState } from "./hexDocument";
 import { HexEditorRegistry } from "./hexEditorRegistry";
 import { findDeepestNode, IStructureNode, IStructureTemplate } from "./structure";
 
-/** Parsing needs the whole file in memory, so refuse very large files. */
-const MAX_PARSE_BYTES = 256 * 1024 * 1024;
 const REPARSE_DELAY_MS = 300;
 
 /** A template loaded from disk. Recompiled in place when its file changes. */
@@ -223,14 +221,19 @@ export class StructureView extends Disposable implements vscode.TreeDataProvider
 		this.treeView.message = undefined;
 		this.roots = [];
 		if (doc && loaded) {
-			const size = (await doc.size()) ?? 0;
-			if (size > MAX_PARSE_BYTES) {
-				this.treeView.message = vscode.l10n.t("File is too large to parse with a template.");
-			} else {
-				const data = await doc.readBufferWithEdits(0, size);
-				if (version !== this.parseVersion) {
-					return; // superseded by a newer parse while reading
-				}
+			// Kaitai streams need the whole file in one buffer. Fields are only
+			// decoded when their tree node is expanded.
+			let data: Uint8Array;
+			try {
+				data = await doc.readBufferWithEdits(0, (await doc.size()) ?? 0);
+			} catch (e) {
+				data = new Uint8Array();
+				this.treeView.message = vscode.l10n.t("Failed to read file: {0}", (e as Error).message);
+			}
+			if (version !== this.parseVersion) {
+				return; // superseded by a newer parse while reading
+			}
+			if (!this.treeView.message) {
 				this.roots = loaded.template.parse(data);
 			}
 		}
