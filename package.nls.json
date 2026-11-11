@@ -1,0 +1,27 @@
+{
+	"name": "Hex Editor",
+	"description": "Allows viewing and editing files in a hex editor",
+
+	"hexeditor.inspectorType": "Where the data inspector should be shown in the hex editor.",
+	"hexeditor.maxFileSize": "The max file size (in MB) that the editor will try to open before warning you.",
+	"hexeditor.dataInspector.autoReveal": "Whether to auto reveal the data inspector when the hex editor is opened.",
+	"hexeditor.defaultEndianness": "The endianness selected when loading the editor.",
+	"hexeditor.columnWidth": "The number of bytes per row to show in the editor.",
+	"hexeditor.showDecodedText": "Whether decoded text should be shown in the editor.",
+	"hexeditor.showOpenFileButton": "Show Hex Editor button in editor menu.",
+	"hexEditor.openFile": "Open Active File in Hex Editor",
+	"hexEditor.goToOffset": "Go To Offset",
+	"hexEditor.selectBetweenOffsets": "Select Between Offsets",
+	"hexEditor.copyAs": "Copy As...",
+	"hexeditor.copyType": "Sets the default format in which bytes are copied",
+	"hexEditor.switchEditMode": "Switch Edit Mode",
+	"hexEditor.copyOffsetAsDec": "Copy Offset as Decimal",
+	"hexEditor.copyOffsetAsHex": "Copy Offset as Hex",
+	"hexEditor.compareSelected": "Compare Selected in HexEditor (Experimental)",
+	"dataInspectorView": "Data Inspector",
+	"structureView": "Hex Structure",
+	"structureView.welcome": "Browse this file's fields by parsing it with a [Kaitai Struct](https://kaitai.io) template (.ksy). Templates for many formats are in the [format gallery](https://formats.kaitai.io).\n[Load Template](command:hexEditor.structure.loadTemplate)",
+	"hexEditor.structure.loadTemplate": "Load Kaitai Struct Template...",
+	"hexEditor.structure.clearTemplate": "Clear Structure Template",
+	"hexEditor.structure.selectNode": "Select Structure Field in Editor"
+}
